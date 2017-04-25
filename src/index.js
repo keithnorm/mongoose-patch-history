@@ -3,7 +3,7 @@ import { Schema } from 'mongoose'
 import Promise, { join } from 'bluebird'
 import diff from 'deep-diff'
 import { decamelize, pascalize } from 'humps'
-import { dropRightWhile, each, map, merge, omit } from 'lodash'
+import { each, map, merge, omit } from 'lodash'
 
 export const RollbackError = function (message, extra) {
   Error.captureStackTrace(this, this.constructor)
@@ -79,12 +79,12 @@ export default function (schema, opts) {
         }
 
         // apply patches to `state`
-        let state = this.toObject();
+        let state = this.toObject()
         patches.some((patch) => {
           for (let change of patch.ops) {
             diff.revertChange(state, {}, change)
           }
-          return patch.id == patchId;
+          return patch.id === patchId
         })
 
         // save new state and resolve with the resulting document

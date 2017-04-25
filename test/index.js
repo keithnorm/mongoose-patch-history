@@ -96,7 +96,7 @@ describe('mongoose-patch-history', () => {
             assert.equal(patches.length, 1)
             assert.equal(
               JSON.stringify(patches[0].ops),
-              JSON.stringify([{"kind":"N","path":["title"],"rhs":"foo"}])
+              JSON.stringify([{'kind': 'N', 'path': ['title'], 'rhs': 'foo'}])
             )
           }),
         // with referenced user
@@ -107,7 +107,7 @@ describe('mongoose-patch-history', () => {
             assert.equal(patches.length, 1)
             assert.equal(
               JSON.stringify(patches[0].ops),
-              JSON.stringify([{"kind":"N","path":["text"],"rhs":"wat"}])
+              JSON.stringify([{'kind': 'N', 'path': ['text'], 'rhs': 'wat'}])
             )
           })
       ).then(() => done()).catch(done)
@@ -123,7 +123,7 @@ describe('mongoose-patch-history', () => {
           assert.equal(patches.length, 2)
           assert.equal(
             JSON.stringify(patches[1].ops),
-            JSON.stringify([{"kind":"E","path":["title"],"lhs":"foo","rhs":"bar"}])
+            JSON.stringify([{'kind': 'E', 'path': ['title'], 'lhs': 'foo', 'rhs': 'bar'}])
           )
         }).then(done).catch(done)
     })
