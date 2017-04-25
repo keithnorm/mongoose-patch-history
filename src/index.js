@@ -1,7 +1,7 @@
 import assert from 'assert'
 import { Schema } from 'mongoose'
 import Promise, { join } from 'bluebird'
-import jsonpatch from 'fast-json-patch'
+import diff from 'deep-diff'
 import { decamelize, pascalize } from 'humps'
 import { dropRightWhile, each, map, merge, omit } from 'lodash'
 
@@ -71,30 +71,24 @@ export default function (schema, opts) {
 
   // roll the document back to the state of a given patch id
   schema.methods.rollback = function (patchId, data) {
-    return this.patches.find({ ref: this.id }).sort({ date: 1 }).exec()
+    return this.patches.find({ ref: this.id }).sort({ _id: -1 }).exec()
       .then((patches) => new Promise((resolve, reject) => {
         // patch doesn't exist
         if (!~map(patches, 'id').indexOf(patchId)) {
           return reject(new RollbackError('patch doesn\'t exist'))
         }
 
-        // get all patches that should be applied
-        const apply = dropRightWhile(patches, (patch) => patch.id !== patchId)
-
-        // if the patches that are going to be applied are all existing patches,
-        // the rollback attempts to rollback to the latest patch
-        if (patches.length === apply.length) {
-          return reject(new RollbackError('rollback to latest patch'))
-        }
-
         // apply patches to `state`
-        const state = {}
-        apply.forEach((patch) => {
-          jsonpatch.apply(state, patch.ops, true)
+        let state = this.toObject();
+        patches.some((patch) => {
+          for (let change of patch.ops) {
+            diff.revertChange(state, {}, change)
+          }
+          return patch.id == patchId;
         })
 
         // save new state and resolve with the resulting document
-        this.set(merge(data, state)).save().then(resolve).catch(reject)
+        this.set(merge(state, data)).save().then(resolve).catch(reject)
       }))
   }
 
@@ -131,10 +125,10 @@ export default function (schema, opts) {
   // added to the associated patch collection
   schema.pre('save', function (next) {
     const { _id: ref } = this
-    const ops = jsonpatch.compare(this.isNew ? {} : this._original, toJSON(this.data()))
+    const ops = diff.diff(this.isNew ? {} : this._original, toJSON(this.data()))
 
     // don't save a patch when there are no changes to save
-    if (!ops.length) {
+    if (!ops) {
       return next()
     }
 

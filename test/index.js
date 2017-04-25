@@ -96,7 +96,7 @@ describe('mongoose-patch-history', () => {
             assert.equal(patches.length, 1)
             assert.equal(
               JSON.stringify(patches[0].ops),
-              JSON.stringify([{ value: 'foo', path: '/title', op: 'add' }])
+              JSON.stringify([{"kind":"N","path":["title"],"rhs":"foo"}])
             )
           }),
         // with referenced user
@@ -107,7 +107,7 @@ describe('mongoose-patch-history', () => {
             assert.equal(patches.length, 1)
             assert.equal(
               JSON.stringify(patches[0].ops),
-              JSON.stringify([{ value: 'wat', path: '/text', op: 'add' }])
+              JSON.stringify([{"kind":"N","path":["text"],"rhs":"wat"}])
             )
           })
       ).then(() => done()).catch(done)
@@ -123,7 +123,7 @@ describe('mongoose-patch-history', () => {
           assert.equal(patches.length, 2)
           assert.equal(
             JSON.stringify(patches[1].ops),
-            JSON.stringify([{ value: 'bar', path: '/title', op: 'replace' }])
+            JSON.stringify([{"kind":"E","path":["title"],"lhs":"foo","rhs":"bar"}])
           )
         }).then(done).catch(done)
     })
@@ -184,8 +184,8 @@ describe('mongoose-patch-history', () => {
         .then((c) => Comment.findOne({ _id: c.id }))
         .then((c) => c.set({ text: 'comm 3', user: ObjectId() }).save())
         .then((c) => Comment.findOne({ _id: c.id }))
-        .then((c) => join(c, c.patches.find({ ref: c.id })))
-        .then(([c, patches]) => c.rollback(patches[1].id, { user: ObjectId() }))
+        .then((c) => join(c, c.patches.find({ ref: c.id }).sort({_id: -1})))
+        .then(([c, patches]) => c.rollback(patches[0].id, { user: ObjectId() }))
         .then((c) => {
           assert.equal(c.text, 'comm 2')
           return c.patches.find({ ref: c.id })
@@ -252,14 +252,14 @@ describe('mongoose-patch-history', () => {
         .then(([ o1, o2, p ]) => join(o1, o2, p.set({ organization: o2._id }).save()))
         .then(([ o1, o2, p ]) => join(o1, o2, p.patches.find({ ref: p.id })))
         .then(([ o1, o2, patches ]) => {
-          const pathFilter = (path) => (elem) => elem.path === path
-          const firstOrganizationOperation = patches[0].ops.find(pathFilter('/organization'))
-          const secondOrganizationOperation = patches[1].ops.find(pathFilter('/organization'))
+          const pathFilter = (path) => (elem) => JSON.stringify(elem.path) === JSON.stringify(path)
+          const firstOrganizationOperation = patches[0].ops.find(pathFilter(['organization']))
+          const secondOrganizationOperation = patches[1].ops.find(pathFilter(['organization']))
           assert.equal(patches.length, 2)
           assert(firstOrganizationOperation)
           assert(secondOrganizationOperation)
-          assert.equal(firstOrganizationOperation.value, o1._id.toString())
-          assert.equal(secondOrganizationOperation.value, o2._id.toString())
+          assert.equal(firstOrganizationOperation.rhs, o1._id.toString())
+          assert.equal(secondOrganizationOperation.rhs, o2._id.toString())
         })
         .then(done).catch(done)
     })
