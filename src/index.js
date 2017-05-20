@@ -138,7 +138,6 @@ export default function (schema, opts) {
       data[name] = this[type.from || name]
     })
 
-    this.patches.create(data)
-    next()
+    Patches.create(data).then(next)
   })
 }
