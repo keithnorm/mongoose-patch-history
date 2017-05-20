@@ -104,6 +104,7 @@ export default function (schema, opts) {
     this._original = toJSON(this.data())
   }
   schema.post('init', snapshot)
+  schema.post('save', snapshot)
 
   // when a document is removed and `removePatches` is not set to false ,
   // all patch documents from the associated patch collection are also removed
@@ -118,18 +119,13 @@ export default function (schema, opts) {
       .then(next).catch(next)
   })
 
-  schema.pre('save', function (next) {
-    this.wasNew = this.isNew
-    next()
-  })
-
   // when a document is saved, the json patch that reflects the changes is
   // computed. if the patch consists of one or more operations (meaning the
   // document has changed), a new patch document reflecting the changes is
   // added to the associated patch collection
-  schema.post('save', function (doc, next) {
+  schema.pre('save', function (next) {
     const { _id: ref } = this
-    const ops = diff.diff(this.wasNew ? {} : this._original, toJSON(this.data()))
+    const ops = diff.diff(this.isNew ? {} : this._original, toJSON(this.data()))
 
     // don't save a patch when there are no changes to save
     if (!ops) {
@@ -142,9 +138,7 @@ export default function (schema, opts) {
       data[name] = this[type.from || name]
     })
 
-    this.patches.create(data).then(() => {
-      snapshot.call(this)
-      next()
-    }).catch(next)
+    this.patches.create(data)
+    next()
   })
 }
